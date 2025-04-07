@@ -11,49 +11,41 @@ import java.util.Set;
 public class KMPsearch {
     public static void main(String[] args) {
         if (args.length == 0) {
-            System.err.println("Usage: java kmpSearch \"target\" [filename.txt]");
+            System.err.println("Usage: java KMPsearch \"target\" [filename.txt]");
             System.exit(1);
         }
 
         String pattern = args[0];
-        Map<Character, int[]> kmpTable = buildkmpTable(pattern);
+        Map<Character, int[]> skipTable = buildSkipTable(pattern);
 
         if (args.length == 1) {
-            printkmpTable(pattern, kmpTable);
+            printSkipTable(pattern, skipTable);
         } else {
             String filename = args[1];
-            searchInFile(pattern, kmpTable, filename);
+            searchInFile(pattern, skipTable, filename);
         }
     }
 
-    private static Map<Character, int[]> buildkmpTable(String pattern) {
-        Map<Character, int[]> kmp = new HashMap<>();
-        Set<Character> uniqueChars = new HashSet<>();
+    private static Map<Character, int[]> buildSkipTable(String pattern) {
+        Map<Character, int[]> skipTable = new HashMap<>();
+        Set<Character> charsInPattern = new HashSet<>();
         
-        // Identify all unique characters in pattern
+        // Get all unique characters in pattern
         for (char c : pattern.toCharArray()) {
-            uniqueChars.add(c);
+            charsInPattern.add(c);
+            skipTable.put(c, new int[pattern.length()]);
         }
-
-        // Initialize kmp table for each unique character
-        for (char c : uniqueChars) {
-            kmp.put(c, new int[pattern.length()]);
-        }
-
-        // Build the table using lecturer's method
+        
+        // Build the table incrementally
         for (int pos = 0; pos < pattern.length(); pos++) {
-            // Current partial pattern
-            String currentPattern = pattern.substring(0, pos + 1);
-            
-            for (char c : uniqueChars) {
+            for (char c : charsInPattern) {
                 if (c == pattern.charAt(pos)) {
-                    // Exact match
-                    kmp.get(c)[pos] = 0;
+                    skipTable.get(c)[pos] = 0; // Exact match
                 } else {
-                    // Create temp string by replacing current character
-                    String temp = currentPattern.substring(0, pos) + c;
+                    // Create test string by substituting character
+                    String temp = pattern.substring(0, pos) + c;
                     
-                    // Find maximum shift where pattern aligns with temp
+                    // Find maximum alignment shift
                     int maxShift = 0;
                     for (int shift = 1; shift <= pos; shift++) {
                         String patternPart = pattern.substring(0, pos + 1 - shift);
@@ -64,36 +56,35 @@ public class KMPsearch {
                         }
                     }
                     
-                    // If no alignment found, shift full length
-                    kmp.get(c)[pos] = maxShift > 0 ? maxShift : pos + 1;
+                    skipTable.get(c)[pos] = maxShift > 0 ? maxShift : pos + 1;
                 }
             }
         }
-
-        return kmp;
+        
+        return skipTable;
     }
 
-    private static void printkmpTable(String pattern, Map<Character, int[]> kmpTable) {
+    private static void printSkipTable(String pattern, Map<Character, int[]> skipTable) {
         // Print header row
         System.out.print("*");
-        for (int i = 0; i < pattern.length(); i++) {
-            System.out.print("," + pattern.charAt(i));
+        for (char c : pattern.toCharArray()) {
+            System.out.print("," + c);
         }
         System.out.println();
 
-        // Print rows for each character in pattern (sorted)
-        ArrayList<Character> sortedChars = new ArrayList<>(kmpTable.keySet());
-        Collections.sort(sortedChars);
+        // Character rows (sorted alphabetically)
+        ArrayList<Character> chars = new ArrayList<>(skipTable.keySet());
+        Collections.sort(chars);
         
-        for (char c : sortedChars) {
+        for (char c : chars) {
             System.out.print(c);
             for (int pos = 0; pos < pattern.length(); pos++) {
-                System.out.print("," + kmpTable.get(c)[pos]);
+                System.out.print("," + skipTable.get(c)[pos]);
             }
             System.out.println();
         }
 
-        // Print wildcard row
+        // Wildcard row
         System.out.print("*");
         for (int pos = 0; pos < pattern.length(); pos++) {
             System.out.print("," + (pos + 1));
@@ -101,17 +92,16 @@ public class KMPsearch {
         System.out.println();
     }
 
-    private static void searchInFile(String pattern, Map<Character, int[]> kmpTable, String filename) {
+    private static void searchInFile(String pattern, Map<Character, int[]> skipTable, String filename) {
         try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
             String line;
             int lineNumber = 0;
 
             while ((line = br.readLine()) != null) {
                 lineNumber++;
-                ArrayList<Integer> occurrences = kmpSearch(line, pattern, kmpTable);
-                
-                for (int pos : occurrences) {
-                    System.out.println((pos + 1) + " " + line); 
+                ArrayList<Integer> matches = searchLine(line, pattern, skipTable);
+                for (int pos : matches) {
+                    System.out.println((pos + 1) + " " + line); // 1-based indexing
                 }
             }
         } catch (IOException e) {
@@ -119,29 +109,31 @@ public class KMPsearch {
         }
     }
 
-    private static ArrayList<Integer> kmpSearch(String text, String pattern, Map<Character, int[]> kmpTable) {
-        ArrayList<Integer> occurrences = new ArrayList<>();
+    private static ArrayList<Integer> searchLine(String text, String pattern, Map<Character, int[]> skipTable) {
+        ArrayList<Integer> matches = new ArrayList<>();
         int n = text.length();
         int m = pattern.length();
-        int currentState = 0;
-
-        for (int i = 0; i < n; i++) {
-            char c = text.charAt(i);
-            int[] transitions = kmpTable.getOrDefault(c, new int[m]);
-            
-            if (currentState < m) {
-                currentState = transitions[currentState];
-            } else {
-                currentState = 0;
+        
+        int i = 0; // Current position in text
+        while (i <= n - m) {
+            int j = 0;
+            // Check for match at current position
+            while (j < m && text.charAt(i + j) == pattern.charAt(j)) {
+                j++;
             }
-
-            if (currentState == m) {
-                // Pattern found
-                occurrences.add(i - m + 1);
-                currentState = 0; // Reset for next search
+            
+            if (j == m) {
+                // Full match found
+                matches.add(i);
+                i++; // Move to next position
+            } else {
+                // Mismatch - use skip table
+                char mismatchChar = text.charAt(i + j);
+                int skip = skipTable.getOrDefault(mismatchChar, new int[m])[j];
+                i += Math.max(skip, 1); // Always move forward at least 1
             }
         }
-
-        return occurrences;
+        
+        return matches;
     }
 }
