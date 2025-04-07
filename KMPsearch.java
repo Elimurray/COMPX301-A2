@@ -40,23 +40,32 @@ public class KMPsearch {
             kmp.put(c, new int[pattern.length()]);
         }
 
-        // Build the kmp table
-        for (int state = 0; state < pattern.length(); state++) {
+        // Build the table using lecturer's method
+        for (int pos = 0; pos < pattern.length(); pos++) {
+            // Current partial pattern
+            String currentPattern = pattern.substring(0, pos + 1);
+            
             for (char c : uniqueChars) {
-                if (c == pattern.charAt(state)) {
-                    // Match case: move to next state
-                    kmp.get(c)[state] = state + 1;
+                if (c == pattern.charAt(pos)) {
+                    // Exact match
+                    kmp.get(c)[pos] = 0;
                 } else {
-                    // Mismatch case: find the longest prefix that is also a suffix
-                    int restartState = 0;
-                    String current = pattern.substring(0, state) + c;
-                    for (int k = 1; k <= state; k++) {
-                        if (pattern.startsWith(current.substring(k))) {
-                            restartState = state + 1 - k;
+                    // Create temp string by replacing current character
+                    String temp = currentPattern.substring(0, pos) + c;
+                    
+                    // Find maximum shift where pattern aligns with temp
+                    int maxShift = 0;
+                    for (int shift = 1; shift <= pos; shift++) {
+                        String patternPart = pattern.substring(0, pos + 1 - shift);
+                        String tempPart = temp.substring(shift);
+                        if (patternPart.equals(tempPart)) {
+                            maxShift = shift;
                             break;
                         }
                     }
-                    kmp.get(c)[state] = restartState;
+                    
+                    // If no alignment found, shift full length
+                    kmp.get(c)[pos] = maxShift > 0 ? maxShift : pos + 1;
                 }
             }
         }
@@ -78,17 +87,16 @@ public class KMPsearch {
         
         for (char c : sortedChars) {
             System.out.print(c);
-            for (int state = 0; state < pattern.length(); state++) {
-                int skip = kmpTable.get(c)[state];
-                System.out.print("," + (state + 1 - skip));
+            for (int pos = 0; pos < pattern.length(); pos++) {
+                System.out.print("," + kmpTable.get(c)[pos]);
             }
             System.out.println();
         }
 
         // Print wildcard row
         System.out.print("*");
-        for (int state = 0; state < pattern.length(); state++) {
-            System.out.print("," + (state + 1));
+        for (int pos = 0; pos < pattern.length(); pos++) {
+            System.out.print("," + (pos + 1));
         }
         System.out.println();
     }
