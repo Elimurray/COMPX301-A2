@@ -1,3 +1,6 @@
+// Eli Murray 1626960
+// Alexander Trotter 1644272
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -9,6 +12,12 @@ import java.util.Map;
 import java.util.Set;
 
 public class KMPsearch {
+    /**
+     * Main entry point for the KMPsearch program. Handles command-line arguments
+     * to either print the skip table for a target string or search for the target
+     * in file.
+     * @param args Command-line arguments: args[0] is the target string, args[1] is the filename.
+     */
     public static void main(String[] args) {
         if (args.length == 0) {
             System.err.println("Usage: java KMPsearch \"target\" [filename.txt]");
@@ -26,6 +35,13 @@ public class KMPsearch {
         }
     }
 
+    /**
+     * Constructs a skip table for the KMP algorithm.
+     * The table maps each character in the pattern to an array of skip distances
+     * for each position in the pattern.
+     * @param pattern The target string to build the skip table for.
+     * @return A map where keys are characters and values are arrays of skip distances.
+     */
     private static Map<Character, int[]> buildSkipTable(String pattern) {
         Map<Character, int[]> skipTable = new HashMap<>();
         Set<Character> charsInPattern = new HashSet<>();
@@ -40,7 +56,7 @@ public class KMPsearch {
         for (int pos = 0; pos < pattern.length(); pos++) {
             for (char c : charsInPattern) {
                 if (c == pattern.charAt(pos)) {
-                    skipTable.get(c)[pos] = 0; // Exact match
+                    skipTable.get(c)[pos] = 0; 
                 } else {
                     // Create test string by substituting character
                     String temp = pattern.substring(0, pos) + c;
@@ -64,6 +80,13 @@ public class KMPsearch {
         return skipTable;
     }
 
+    /**
+     * Prints the KMP skip table in the correct format.
+     * Includes the pattern row, rows for each unique character in alphabetical order,
+     * and a wildcard row for characters not in the pattern.
+     * @param pattern The target string.
+     * @param skipTable The skip table mapping characters to skip distance arrays.
+     */
     private static void printSkipTable(String pattern, Map<Character, int[]> skipTable) {
         // Print header row
         System.out.print("*");
@@ -92,6 +115,13 @@ public class KMPsearch {
         System.out.println();
     }
 
+    /**
+     * Searches for the target pattern in the specified file, printing each line
+     * that contains the pattern along with the 1-based index of each occurrence.
+     * @param pattern The target string to search for.
+     * @param skipTable The KMP skip table for the pattern.
+     * @param filename The name of the file to search.
+     */
     private static void searchInFile(String pattern, Map<Character, int[]> skipTable, String filename) {
         try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
             String line;
@@ -101,7 +131,7 @@ public class KMPsearch {
                 lineNumber++;
                 ArrayList<Integer> matches = searchLine(line, pattern, skipTable);
                 for (int pos : matches) {
-                    System.out.println((pos + 1) + " " + line); // 1-based indexing
+                    System.out.println((pos + 1) + " " + line); 
                 }
             }
         } catch (IOException e) {
@@ -109,12 +139,20 @@ public class KMPsearch {
         }
     }
 
+    /**
+     * Searches for all occurrences of the pattern in a single line of text using
+     * the KMP skip table, returning the 0-based indices of matches.
+     * @param text The line of text to search.
+     * @param pattern The target string to find.
+     * @param skipTable The KMP skip table for the pattern.
+     * @return A list of 0-based indices where the pattern occurs in the text.
+     */
     private static ArrayList<Integer> searchLine(String text, String pattern, Map<Character, int[]> skipTable) {
         ArrayList<Integer> matches = new ArrayList<>();
         int n = text.length();
         int m = pattern.length();
         
-        int i = 0; // Current position in text
+        int i = 0; 
         while (i <= n - m) {
             int j = 0;
             // Check for match at current position
@@ -125,12 +163,12 @@ public class KMPsearch {
             if (j == m) {
                 // Full match found
                 matches.add(i);
-                i++; // Move to next position
+                i++; 
             } else {
                 // Mismatch - use skip table
                 char mismatchChar = text.charAt(i + j);
                 int skip = skipTable.getOrDefault(mismatchChar, new int[m])[j];
-                i += Math.max(skip, 1); // Always move forward at least 1
+                i += Math.max(skip, 1); 
             }
         }
         
